@@ -27,6 +27,7 @@ type ArithmeticResponse struct {
 // ArithmeticEndpoint define endpoint
 type ArithmeticEndpoint endpoint.Endpoint
 
+// MakeArithmeticEndpoint make endpoint
 func MakeArithmeticEndpoint(svc Service) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (response interface{}, err error) {
 		req := request.(ArithmeticRequest)
