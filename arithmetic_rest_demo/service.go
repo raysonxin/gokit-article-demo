@@ -27,8 +27,8 @@ func (s ArithmeticService) Add(a, b int) int {
 	return a + b
 }
 
-// Substract implement Substract method
-func (s ArithmeticService) Substract(a, b int) int {
+// Subtract implement Subtract method
+func (s ArithmeticService) Subtract(a, b int) int {
 	return a - b
 }
 

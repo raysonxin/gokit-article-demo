@@ -8,7 +8,7 @@ import (
 )
 
 var (
-	ErrInvalidRequestType = errors.New("RequestType has only four type: Add,Substract,Multiply,Divide")
+	ErrInvalidRequestType = errors.New("RequestType has only four type: Add,Subtract,Multiply,Divide")
 )
 
 // ArithmeticRequest define request struct
@@ -21,7 +21,7 @@ type ArithmeticRequest struct {
 // ArithmeticResponse define response struct
 type ArithmeticResponse struct {
 	Result int   `json:"result"`
-	Error  error `json:"error,omitempty"`
+	Error  error `json:"error"`
 }
 
 // ArithmeticEndpoint define endpoint
@@ -34,6 +34,7 @@ func MakeArithmeticEndpoint(svc Service) endpoint.Endpoint {
 
 		var (
 			res, a, b int
+			calError  error
 		)
 
 		a = req.A
@@ -46,11 +47,11 @@ func MakeArithmeticEndpoint(svc Service) endpoint.Endpoint {
 		} else if strings.EqualFold(req.RequestType, "Multiply") {
 			res = svc.Multiply(a, b)
 		} else if strings.EqualFold(req.RequestType, "Divide") {
-			res, err = svc.Divide(a, b)
+			res, calError = svc.Divide(a, b)
 		} else {
 			return nil, ErrInvalidRequestType
 		}
 
-		return ArithmeticResponse{Result: res, Error: err}, nil
+		return ArithmeticResponse{Result: res, Error: calError}, nil
 	}
 }
