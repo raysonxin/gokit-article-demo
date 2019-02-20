@@ -55,7 +55,7 @@ func main() {
 	//endpoint = NewTokenBucketLimitterWithJuju(ratebucket)(endpoint)
 
 	//add ratelimit,refill every second,set capacity 3
-	ratebucket := rate.NewLimiter(rate.Every(time.Second*1), 3)
+	ratebucket := rate.NewLimiter(rate.Every(time.Second*1), 100)
 	endpoint = NewTokenBucketLimitterWithBuildIn(ratebucket)(endpoint)
 
 	r := MakeHttpHandler(ctx, endpoint, logger)
