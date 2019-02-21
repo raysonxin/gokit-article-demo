@@ -14,6 +14,6 @@ scrape_configs:
   - job_name: 'raysonxin'
     scrape_interval: 5s
     static_configs:
-      - targets: ['192.168.10.113:9000']
+      - targets: ['192.168.192.145:9000']
         labels:
           group: 'arithmetic'

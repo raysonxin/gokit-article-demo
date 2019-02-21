@@ -8,7 +8,7 @@ import (
 	"github.com/go-kit/kit/log"
 	kithttp "github.com/go-kit/kit/transport/http"
 	"github.com/gorilla/mux"
-	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"net/http"
 	"strconv"
 )
@@ -33,7 +33,7 @@ func MakeHttpHandler(ctx context.Context, endpoint endpoint.Endpoint, logger log
 		options...,
 	))
 
-	r.Path("/metrics").Handler(prometheus.UninstrumentedHandler())
+	r.Path("/metrics").Handler(promhttp.Handler())
 
 	return r
 }
