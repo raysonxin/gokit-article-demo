@@ -4,17 +4,13 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"github.com/go-kit/kit/endpoint"
 	"github.com/go-kit/kit/log"
-	"github.com/go-kit/kit/sd"
 	"github.com/go-kit/kit/sd/consul"
-	"github.com/go-kit/kit/sd/lb"
 	"github.com/hashicorp/consul/api"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 )
 
 func main() {
@@ -46,22 +42,15 @@ func main() {
 		client = consul.NewClient(consulClient)
 	}
 
-	tags := []string{"arithmetic", "raysonxin"}
-	passingOnly := true
-	duration := 500 * time.Millisecond
-	var arithEndpoint endpoint.Endpoint
-
 	ctx := context.Background()
 
 	factory := arithmeticFactory(ctx, "POST", "calculate")
-	serviceName := "arithmetic"
-	instancer := consul.NewInstancer(client, logger, serviceName, tags, passingOnly)
-	endpointer := sd.NewEndpointer(instancer, factory, logger)
-	balancer := lb.NewRoundRobin(endpointer)
-	retry := lb.Retry(1, duration, balancer)
-	arithEndpoint = retry
 
-	r := MakeHttpHandler(arithEndpoint)
+	//创建Endpoint
+	discoverEndpoint := MakeDiscoverEndpoint(ctx, client, factory, logger)
+
+	//创建传输层
+	r := MakeHttpHandler(discoverEndpoint)
 
 	errc := make(chan error)
 	go func() {
@@ -70,12 +59,12 @@ func main() {
 		errc <- fmt.Errorf("%s", <-c)
 	}()
 
-	// HTTP transport.
+	//开始监听
 	go func() {
 		logger.Log("transport", "HTTP", "addr", "9001")
 		errc <- http.ListenAndServe(":9001", r)
 	}()
 
-	// Run!
+	// 开始运行，等待结束
 	logger.Log("exit", <-errc)
 }

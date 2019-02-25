@@ -68,19 +68,24 @@ func main() {
 	ratebucket := rate.NewLimiter(rate.Every(time.Second*1), 100)
 	endpoint = NewTokenBucketLimitterWithBuildIn(ratebucket)(endpoint)
 
+	//创建健康检查的Endpoint，未增加限流
 	healthEndpoint := MakeHealthCheckEndpoint(svc)
 
+	//把算术运算Endpoint和健康检查Endpoint封装至ArithmeticEndpoints
 	endpts := ArithmeticEndpoints{
 		ArithmeticEndpoint:  endpoint,
 		HealthCheckEndpoint: healthEndpoint,
 	}
 
+	//创建http.Handler
 	r := MakeHttpHandler(ctx, endpts, logger)
 
+	//创建注册对象
 	registar := Register(*consulHost, *consulPort, *serviceHost, *servicePort, logger)
 
 	go func() {
 		fmt.Println("Http Server start at port:" + *servicePort)
+		//启动前执行注册
 		registar.Register()
 		handler := r
 		errChan <- http.ListenAndServe(":"+*servicePort, handler)
@@ -93,6 +98,7 @@ func main() {
 	}()
 
 	error := <-errChan
+	//服务退出取消注册
 	registar.Deregister()
 	fmt.Println(error)
 }
