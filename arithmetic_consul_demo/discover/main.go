@@ -15,12 +15,14 @@ import (
 
 func main() {
 
+	// 创建环境变量
 	var (
 		consulHost = flag.String("consul.host", "", "consul server ip address")
 		consulPort = flag.String("consul.port", "", "consul server port")
 	)
 	flag.Parse()
 
+	//创建日志组件
 	var logger log.Logger
 	{
 		logger = log.NewLogfmtLogger(os.Stderr)
@@ -28,6 +30,7 @@ func main() {
 		logger = log.With(logger, "caller", log.DefaultCaller)
 	}
 
+	//创建consul客户端对象
 	var client consul.Client
 	{
 		consulConfig := api.DefaultConfig()
@@ -44,10 +47,8 @@ func main() {
 
 	ctx := context.Background()
 
-	factory := arithmeticFactory(ctx, "POST", "calculate")
-
 	//创建Endpoint
-	discoverEndpoint := MakeDiscoverEndpoint(ctx, client, factory, logger)
+	discoverEndpoint := MakeDiscoverEndpoint(ctx, client, logger)
 
 	//创建传输层
 	r := MakeHttpHandler(discoverEndpoint)
