@@ -72,8 +72,8 @@ func main() {
 
 	// HTTP transport.
 	go func() {
-		logger.Log("transport", "HTTP", "addr", "8080")
-		errc <- http.ListenAndServe(":8080", r)
+		logger.Log("transport", "HTTP", "addr", "9001")
+		errc <- http.ListenAndServe(":9001", r)
 	}()
 
 	// Run!

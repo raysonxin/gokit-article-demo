@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"github.com/go-kit/kit/log"
 	kitprometheus "github.com/go-kit/kit/metrics/prometheus"
@@ -15,6 +16,15 @@ import (
 )
 
 func main() {
+
+	var (
+		consulHost  = flag.String("consul.host", "", "consul ip address")
+		consulPort  = flag.String("consul.port", "", "consul port")
+		serviceHost = flag.String("service.host", "", "service ip address")
+		servicePort = flag.String("service.port", "", "service port")
+	)
+
+	flag.Parse()
 
 	ctx := context.Background()
 	errChan := make(chan error)
@@ -67,12 +77,13 @@ func main() {
 
 	r := MakeHttpHandler(ctx, endpts, logger)
 
-	registar := Register("localhost", "8500", "localhost", "9000", logger)
+	registar := Register(*consulHost, *consulPort, *serviceHost, *servicePort, logger)
 
 	go func() {
-		fmt.Println("Http Server start at port:9000")
+		fmt.Println("Http Server start at port:" + *servicePort)
+		registar.Register()
 		handler := r
-		errChan <- http.ListenAndServe(":9000", handler)
+		errChan <- http.ListenAndServe(":"+*servicePort, handler)
 	}()
 
 	go func() {
