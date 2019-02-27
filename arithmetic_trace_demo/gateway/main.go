@@ -4,7 +4,6 @@ import (
 	"flag"
 	"fmt"
 	"github.com/go-kit/kit/log"
-	"github.com/gorilla/mux"
 	"github.com/hashicorp/consul/api"
 	"github.com/openzipkin/zipkin-go"
 	zipkinhttpsvr "github.com/openzipkin/zipkin-go/middleware/http"
@@ -41,7 +40,7 @@ func main() {
 		var (
 			err           error
 			hostPort      = "localhost:9090"
-			serviceName   = "addsvc"
+			serviceName   = "gateway-service"
 			useNoopTracer = (*zipkinURL == "")
 			reporter      = zipkinhttp.NewReporter(*zipkinURL)
 		)
@@ -69,10 +68,21 @@ func main() {
 	}
 
 	//创建反向代理
-	proxy := NewReverseProxy(consulClient, logger)
-	r := mux.NewRouter()
-	r.Path("/").Handler(proxy)
-	handler := zipkinhttpsvr.NewServerMiddleware(zipkinTracer, nil)(r)
+	proxy := NewReverseProxy(consulClient, zipkinTracer, logger)
+	//r := mux.NewRouter()
+	//r.Path("/").Handler(proxy)
+
+	tags := map[string]string{
+		"component": "gateway_server",
+	}
+
+	handler := zipkinhttpsvr.NewServerMiddleware(
+		zipkinTracer,
+		zipkinhttpsvr.SpanName("gateway"),
+		zipkinhttpsvr.TagResponseSize(true),
+		zipkinhttpsvr.ServerTags(tags),
+	)(proxy)
+
 	errc := make(chan error)
 	go func() {
 		c := make(chan os.Signal)
@@ -91,7 +101,7 @@ func main() {
 }
 
 // NewReverseProxy 创建反向代理处理方法
-func NewReverseProxy(client *api.Client, logger log.Logger) *httputil.ReverseProxy {
+func NewReverseProxy(client *api.Client, zikkinTracer *zipkin.Tracer, logger log.Logger) *httputil.ReverseProxy {
 
 	//创建Director
 	director := func(req *http.Request) {
@@ -128,7 +138,14 @@ func NewReverseProxy(client *api.Client, logger log.Logger) *httputil.ReversePro
 		req.URL.Scheme = "http"
 		req.URL.Host = fmt.Sprintf("%s:%d", tgt.ServiceAddress, tgt.ServicePort)
 		req.URL.Path = "/" + destPath
+
 	}
-	return &httputil.ReverseProxy{Director: director}
+
+	roundTrip, _ := zipkinhttpsvr.NewTransport(zikkinTracer, zipkinhttpsvr.TransportTrace(true))
+
+	return &httputil.ReverseProxy{
+		Director:  director,
+		Transport: roundTrip,
+	}
 
 }

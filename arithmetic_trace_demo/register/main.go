@@ -60,8 +60,8 @@ func main() {
 	{
 		var (
 			err           error
-			hostPort      = "localhost:9090"
-			serviceName   = "addsvc"
+			hostPort      = *serviceHost + ":" + *servicePort
+			serviceName   = "arithmetic-service"
 			useNoopTracer = (*zipkinURL == "")
 			reporter      = zipkinhttp.NewReporter(*zipkinURL)
 		)
@@ -91,12 +91,12 @@ func main() {
 
 	endpoint := MakeArithmeticEndpoint(svc)
 	endpoint = NewTokenBucketLimitterWithBuildIn(ratebucket)(endpoint)
-	endpoint = kitzipkin.TraceEndpoint(zipkinTracer, "calculate")(endpoint)
+	endpoint = kitzipkin.TraceEndpoint(zipkinTracer, "calculate-endpoint")(endpoint)
 
-	//创建健康检查的Endpoint，未增加限流
+	//创建健康检查的Endpoint
 	healthEndpoint := MakeHealthCheckEndpoint(svc)
-	healthEndpoint = NewTokenBucketLimitterWithBuildIn(ratebucket)(endpoint)
-	healthEndpoint = kitzipkin.TraceEndpoint(zipkinTracer, "health")(healthEndpoint)
+	healthEndpoint = NewTokenBucketLimitterWithBuildIn(ratebucket)(healthEndpoint)
+	healthEndpoint = kitzipkin.TraceEndpoint(zipkinTracer, "health-endpoint")(healthEndpoint)
 
 	//把算术运算Endpoint和健康检查Endpoint封装至ArithmeticEndpoints
 	endpts := ArithmeticEndpoints{
@@ -105,7 +105,7 @@ func main() {
 	}
 
 	//创建http.Handler
-	r := MakeHttpHandler(ctx, endpts, logger)
+	r := MakeHttpHandler(ctx, endpts, zipkinTracer, logger)
 
 	//创建注册对象
 	registar := Register(*consulHost, *consulPort, *serviceHost, *servicePort, logger)
