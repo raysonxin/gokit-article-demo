@@ -69,8 +69,6 @@ func main() {
 
 	//创建反向代理
 	proxy := NewReverseProxy(consulClient, zipkinTracer, logger)
-	//r := mux.NewRouter()
-	//r.Path("/").Handler(proxy)
 
 	tags := map[string]string{
 		"component": "gateway_server",
@@ -141,11 +139,11 @@ func NewReverseProxy(client *api.Client, zikkinTracer *zipkin.Tracer, logger log
 
 	}
 
+	// 为反向代理增加追踪逻辑，使用如下RoundTrip代替默认Transport
 	roundTrip, _ := zipkinhttpsvr.NewTransport(zikkinTracer, zipkinhttpsvr.TransportTrace(true))
 
 	return &httputil.ReverseProxy{
 		Director:  director,
 		Transport: roundTrip,
 	}
-
 }
