@@ -55,6 +55,8 @@ func MakeArithmeticEndpoint(svc Service) endpoint.Endpoint {
 			return nil, ErrInvalidRequestType
 		}
 
+		//time.Sleep(3 * time.Second)
+
 		return ArithmeticResponse{Result: res, Error: calError}, nil
 	}
 }

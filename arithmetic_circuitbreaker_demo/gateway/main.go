@@ -9,12 +9,10 @@ import (
 	"github.com/openzipkin/zipkin-go"
 	zipkinhttpsvr "github.com/openzipkin/zipkin-go/middleware/http"
 	zipkinhttp "github.com/openzipkin/zipkin-go/reporter/http"
-	"math/rand"
+	"net"
 	"net/http"
-	"net/http/httputil"
 	"os"
 	"os/signal"
-	"strings"
 	"syscall"
 )
 
@@ -69,23 +67,29 @@ func main() {
 	}
 
 	//创建反向代理
-	proxy := NewReverseProxy(consulClient, zipkinTracer, logger)
+	//proxy := NewReverseProxy(consulClient, zipkinTracer, logger)
 
 	tags := map[string]string{
 		"component": "gateway_server",
 	}
 
-	hystrix.ConfigureCommand("ArithmeticCalculate", hystrix.CommandConfig{Timeout: 1000})
-	Hystrix("ArithmeticCalculate", "Calculate service Error", logger)
+	hystrixRouter := Routes(consulClient, zipkinTracer, "Circuit Breaker:Service unavailable", logger)
 
 	handler := zipkinhttpsvr.NewServerMiddleware(
 		zipkinTracer,
 		zipkinhttpsvr.SpanName("gateway"),
 		zipkinhttpsvr.TagResponseSize(true),
 		zipkinhttpsvr.ServerTags(tags),
-	)(proxy)
+	)(hystrixRouter)
 
 	errc := make(chan error)
+
+	hystrixStreamHandler := hystrix.NewStreamHandler()
+	hystrixStreamHandler.Start()
+	go func() {
+		errc <- http.ListenAndServe(net.JoinHostPort("", "9010"), hystrixStreamHandler)
+	}()
+
 	go func() {
 		c := make(chan os.Signal)
 		signal.Notify(c, syscall.SIGINT, syscall.SIGTERM)
@@ -102,52 +106,52 @@ func main() {
 	logger.Log("exit", <-errc)
 }
 
-// NewReverseProxy 创建反向代理处理方法
-func NewReverseProxy(client *api.Client, zikkinTracer *zipkin.Tracer, logger log.Logger) *httputil.ReverseProxy {
-
-	//创建Director
-	director := func(req *http.Request) {
-
-		//查询原始请求路径，如：/arithmetic/calculate/10/5
-		reqPath := req.URL.Path
-		if reqPath == "" {
-			return
-		}
-		//按照分隔符'/'对路径进行分解，获取服务名称serviceName
-		pathArray := strings.Split(reqPath, "/")
-		serviceName := pathArray[1]
-
-		//调用consul api查询serviceName的服务实例列表
-		result, _, err := client.Catalog().Service(serviceName, "", nil)
-		if err != nil {
-			logger.Log("ReverseProxy failed", "query service instace error", err.Error())
-			return
-		}
-
-		if len(result) == 0 {
-			logger.Log("ReverseProxy failed", "no such service instance", serviceName)
-			return
-		}
-
-		//重新组织请求路径，去掉服务名称部分
-		destPath := strings.Join(pathArray[2:], "/")
-
-		//随机选择一个服务实例
-		tgt := result[rand.Int()%len(result)]
-		logger.Log("service id", tgt.ServiceID)
-
-		//设置代理服务地址信息
-		req.URL.Scheme = "http"
-		req.URL.Host = fmt.Sprintf("%s:%d", tgt.ServiceAddress, tgt.ServicePort)
-		req.URL.Path = "/" + destPath
-
-	}
-
-	// 为反向代理增加追踪逻辑，使用如下RoundTrip代替默认Transport
-	roundTrip, _ := zipkinhttpsvr.NewTransport(zikkinTracer, zipkinhttpsvr.TransportTrace(true))
-
-	return &httputil.ReverseProxy{
-		Director:  director,
-		Transport: roundTrip,
-	}
-}
+//// NewReverseProxy 创建反向代理处理方法
+//func NewReverseProxy(client *api.Client, zikkinTracer *zipkin.Tracer, logger log.Logger) http.Handler {
+//
+//	//创建Director
+//	director := func(req *http.Request) {
+//
+//		//查询原始请求路径，如：/arithmetic/calculate/10/5
+//		reqPath := req.URL.Path
+//		if reqPath == "" {
+//			return
+//		}
+//		//按照分隔符'/'对路径进行分解，获取服务名称serviceName
+//		pathArray := strings.Split(reqPath, "/")
+//		serviceName := pathArray[1]
+//
+//		//调用consul api查询serviceName的服务实例列表
+//		result, _, err := client.Catalog().Service(serviceName, "", nil)
+//		if err != nil {
+//			logger.Log("ReverseProxy failed", "query service instace error", err.Error())
+//			return
+//		}
+//
+//		if len(result) == 0 {
+//			logger.Log("ReverseProxy failed", "no such service instance", serviceName)
+//			return
+//		}
+//
+//		//重新组织请求路径，去掉服务名称部分
+//		destPath := strings.Join(pathArray[2:], "/")
+//
+//		//随机选择一个服务实例
+//		tgt := result[rand.Int()%len(result)]
+//		logger.Log("service id", tgt.ServiceID)
+//
+//		//设置代理服务地址信息
+//		req.URL.Scheme = "http"
+//		req.URL.Host = fmt.Sprintf("%s:%d", tgt.ServiceAddress, tgt.ServicePort)
+//		req.URL.Path = "/" + destPath
+//
+//	}
+//
+//	// 为反向代理增加追踪逻辑，使用如下RoundTrip代替默认Transport
+//	roundTrip, _ := zipkinhttpsvr.NewTransport(zikkinTracer, zipkinhttpsvr.TransportTrace(true))
+//
+//	return &httputil.ReverseProxy{
+//		Director:  director,
+//		Transport: roundTrip,
+//	}
+//}
