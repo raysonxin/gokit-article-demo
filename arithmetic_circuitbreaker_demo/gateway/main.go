@@ -84,6 +84,7 @@ func main() {
 
 	errc := make(chan error)
 
+	//启用hystrix实时监控，监听端口为9010
 	hystrixStreamHandler := hystrix.NewStreamHandler()
 	hystrixStreamHandler.Start()
 	go func() {
