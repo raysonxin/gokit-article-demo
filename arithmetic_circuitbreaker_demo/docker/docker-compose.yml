@@ -29,3 +29,8 @@ services:
     image: openzipkin/zipkin
     ports:
       - 9411:9411
+
+  hystrix:
+    image: mlabouardy/hystrix-dashboard:latest
+    ports:
+      - 8181:9002
