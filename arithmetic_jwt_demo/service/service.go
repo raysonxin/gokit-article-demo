@@ -59,9 +59,9 @@ func (s ArithmeticService) HealthCheck() bool {
 }
 
 func (s ArithmeticService) Login(name, pwd string) (string, error) {
-
 	if name == "name" && pwd == "pwd" {
-		return "", nil
+		token, err := Sign(name, pwd)
+		return token, err
 	}
 
 	return "", errors.New("Your name or password dismatch")

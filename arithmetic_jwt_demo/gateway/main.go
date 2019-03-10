@@ -20,9 +20,9 @@ func main() {
 
 	// 创建环境变量
 	var (
-		consulHost = flag.String("consul.host", "192.168.192.146", "consul server ip address")
+		consulHost = flag.String("consul.host", "localhost", "consul server ip address")
 		consulPort = flag.String("consul.port", "8500", "consul server port")
-		zipkinURL  = flag.String("zipkin.url", "http://192.168.192.146:9411/api/v2/spans", "Zipkin server url")
+		zipkinURL  = flag.String("zipkin.url", "http://localhost:9411/api/v2/spans", "Zipkin server url")
 	)
 	flag.Parse()
 

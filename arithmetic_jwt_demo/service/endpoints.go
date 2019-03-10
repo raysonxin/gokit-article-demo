@@ -97,10 +97,18 @@ func MakeAuthEndpoint(svc Service) endpoint.Endpoint {
 
 		token, err := svc.Login(req.Name, req.Pwd)
 
-		resp := AuthResponse{
-			Success: err == nil,
-			Token:   token,
-			Error:   err.Error(),
+		var resp AuthResponse
+		if err != nil {
+			resp = AuthResponse{
+				Success: err == nil,
+				Token:   token,
+				Error:   err.Error(),
+			}
+		} else {
+			resp = AuthResponse{
+				Success: err == nil,
+				Token:   token,
+			}
 		}
 
 		return resp, nil

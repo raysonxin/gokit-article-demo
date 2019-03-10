@@ -4,13 +4,14 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"github.com/dgrijalva/jwt-go"
+	kitjwt "github.com/go-kit/kit/auth/jwt"
 	"github.com/go-kit/kit/log"
 	kitprometheus "github.com/go-kit/kit/metrics/prometheus"
 	kitzipkin "github.com/go-kit/kit/tracing/zipkin"
 	"github.com/openzipkin/zipkin-go"
-	stdprometheus "github.com/prometheus/client_golang/prometheus"
-
 	zipkinhttp "github.com/openzipkin/zipkin-go/reporter/http"
+	stdprometheus "github.com/prometheus/client_golang/prometheus"
 	"golang.org/x/time/rate"
 	"net/http"
 	"os"
@@ -22,11 +23,11 @@ import (
 func main() {
 
 	var (
-		consulHost  = flag.String("consul.host", "", "consul ip address")
-		consulPort  = flag.String("consul.port", "", "consul port")
-		serviceHost = flag.String("service.host", "", "service ip address")
-		servicePort = flag.String("service.port", "", "service port")
-		zipkinURL   = flag.String("zipkin.url", "http://192.168.192.146:9411/api/v2/spans", "Zipkin server url")
+		consulHost  = flag.String("consul.host", "localhost", "consul ip address")
+		consulPort  = flag.String("consul.port", "8500", "consul port")
+		serviceHost = flag.String("service.host", "192.168.10.113", "service ip address")
+		servicePort = flag.String("service.port", "9000", "service port")
+		zipkinURL   = flag.String("zipkin.url", "http://localhost:9411/api/v2/spans", "Zipkin server url")
 	)
 
 	flag.Parse()
@@ -89,19 +90,26 @@ func main() {
 	svc = LoggingMiddleware(logger)(svc)
 	svc = Metrics(requestCount, requestLatency)(svc)
 
-	endpoint := MakeArithmeticEndpoint(svc)
-	endpoint = NewTokenBucketLimitterWithBuildIn(ratebucket)(endpoint)
-	endpoint = kitzipkin.TraceEndpoint(zipkinTracer, "calculate-endpoint")(endpoint)
+	calEndpoint := MakeArithmeticEndpoint(svc)
+	calEndpoint = NewTokenBucketLimitterWithBuildIn(ratebucket)(calEndpoint)
+	calEndpoint = kitzipkin.TraceEndpoint(zipkinTracer, "calculate-endpoint")(calEndpoint)
+	calEndpoint = kitjwt.NewParser(jwtKeyFunc, jwt.SigningMethodHS256, kitjwt.StandardClaimsFactory)(calEndpoint)
 
 	//创建健康检查的Endpoint
 	healthEndpoint := MakeHealthCheckEndpoint(svc)
 	healthEndpoint = NewTokenBucketLimitterWithBuildIn(ratebucket)(healthEndpoint)
 	healthEndpoint = kitzipkin.TraceEndpoint(zipkinTracer, "health-endpoint")(healthEndpoint)
 
-	//把算术运算Endpoint和健康检查Endpoint封装至ArithmeticEndpoints
+	//身份认证Endpoint
+	authEndpoint := MakeAuthEndpoint(svc)
+	authEndpoint = NewTokenBucketLimitterWithBuildIn(ratebucket)(authEndpoint)
+	authEndpoint = kitzipkin.TraceEndpoint(zipkinTracer, "login-endpoint")(authEndpoint)
+
+	//把算术运算Endpoint\健康检查、登录Endpoint封装至ArithmeticEndpoints
 	endpts := ArithmeticEndpoints{
-		ArithmeticEndpoint:  endpoint,
+		ArithmeticEndpoint:  calEndpoint,
 		HealthCheckEndpoint: healthEndpoint,
+		AuthEndpoint:        authEndpoint,
 	}
 
 	//创建http.Handler

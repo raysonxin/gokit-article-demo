@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	kitjwt "github.com/go-kit/kit/auth/jwt"
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/tracing/zipkin"
 	kithttp "github.com/go-kit/kit/transport/http"
@@ -34,7 +35,7 @@ func MakeHttpHandler(ctx context.Context, endpoints ArithmeticEndpoints, zipkinT
 		endpoints.ArithmeticEndpoint,
 		decodeArithmeticRequest,
 		encodeArithmeticResponse,
-		options...,
+		append(options, kithttp.ServerBefore(kitjwt.HTTPToContext()))...,
 	))
 
 	r.Path("/metrics").Handler(promhttp.Handler())
@@ -44,6 +45,13 @@ func MakeHttpHandler(ctx context.Context, endpoints ArithmeticEndpoints, zipkinT
 		endpoints.HealthCheckEndpoint,
 		decodeHealthCheckRequest,
 		encodeArithmeticResponse,
+		options...,
+	))
+
+	r.Methods("POST").Path("/login").Handler(kithttp.NewServer(
+		endpoints.AuthEndpoint,
+		decodeLoginRequest,
+		encodeLoginResponse,
 		options...,
 	))
 
@@ -87,4 +95,17 @@ func encodeArithmeticResponse(ctx context.Context, w http.ResponseWriter, respon
 // decodeHealthCheckRequest decode request
 func decodeHealthCheckRequest(ctx context.Context, r *http.Request) (interface{}, error) {
 	return HealthRequest{}, nil
+}
+
+func decodeLoginRequest(_ context.Context, r *http.Request) (interface{}, error) {
+	var loginRequest AuthRequest
+	if err := json.NewDecoder(r.Body).Decode(&loginRequest); err != nil {
+		return nil, err
+	}
+	return loginRequest, nil
+}
+
+func encodeLoginResponse(ctx context.Context, w http.ResponseWriter, response interface{}) error {
+	w.Header().Set("Content-Type", "application/json;charset=utf-8")
+	return json.NewEncoder(w).Encode(response)
 }
