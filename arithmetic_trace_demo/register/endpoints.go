@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-// ArithmeticEndpoint define endpoint
+// CalculateEndpoint define endpoint
 type ArithmeticEndpoints struct {
 	ArithmeticEndpoint  endpoint.Endpoint
 	HealthCheckEndpoint endpoint.Endpoint

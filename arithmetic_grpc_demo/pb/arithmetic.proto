@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package pb;
+
+service ArithmeticService{
+    rpc Calculate(ArithmeticRequest) returns (ArithmeticResponse){}
+}
+
+message ArithmeticRequest {
+    string requestType = 1;
+    int32 a = 2;
+    int32 b = 3;
+}
+
+message ArithmeticResponse {
+    int32 result = 1;
+    string err = 2;
+}

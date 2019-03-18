@@ -24,7 +24,7 @@ type ArithmeticResponse struct {
 	Error  error `json:"error"`
 }
 
-// ArithmeticEndpoint define endpoint
+// CalculateEndpoint define endpoint
 type ArithmeticEndpoint endpoint.Endpoint
 
 // MakeArithmeticEndpoint make endpoint
