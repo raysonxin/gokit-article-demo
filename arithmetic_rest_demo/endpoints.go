@@ -3,8 +3,9 @@ package main
 import (
 	"context"
 	"errors"
-	"github.com/go-kit/kit/endpoint"
 	"strings"
+
+	"github.com/go-kit/kit/endpoint"
 )
 
 var (
@@ -42,7 +43,7 @@ func MakeArithmeticEndpoint(svc Service) endpoint.Endpoint {
 
 		if strings.EqualFold(req.RequestType, "Add") {
 			res = svc.Add(a, b)
-		} else if strings.EqualFold(req.RequestType, "Substract") {
+		} else if strings.EqualFold(req.RequestType, "Subtract") {
 			res = svc.Subtract(a, b)
 		} else if strings.EqualFold(req.RequestType, "Multiply") {
 			res = svc.Multiply(a, b)
